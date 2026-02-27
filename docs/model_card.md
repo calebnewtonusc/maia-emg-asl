@@ -1,63 +1,202 @@
-# Model Card: MAIA ASL-EMG Classifier
+# Model Card — MAIA ASL-EMG Classifier
+
+---
 
 ## Overview
 
 | Field | Value |
 |-------|-------|
 | Model name | `asl_emg_classifier` |
-| Task | Multi-class ASL letter recognition (A-Z) |
-| Modality | Surface EMG (sEMG) |
-| Architecture | LSTM (bidirectional-capable) |
-| Parameters | ~246K (LSTM) / ~1.5M (Conformer) |
-| Input | (1, 40, 8) float32 -- 200ms window, 8 channels, 200Hz |
-| Output | (1, 26) logits -- 26 ASL letters |
-| Format | ONNX opset 17, CoreML .mlpackage |
-| Hardware target | iPhone (Neural Engine), Railway (CPU inference) |
+| Task | Multi-class static ASL letter recognition (A–Z) |
+| Modality | Surface EMG (sEMG) — 8-channel wrist band |
+| Default architecture | LSTM (bidirectional-capable) |
+| Best architecture | Conformer (~1.5M params) |
+| Input tensor | `(1, 40, 8)` float32 — 200ms window · 8 channels · 200Hz |
+| Output tensor | `(1, 26)` logits — 26 ASL letters A–Z |
+| Export formats | ONNX opset 17 · CoreML `.mlpackage` (iOS 16+) |
+| Inference targets | iPhone Neural Engine (<15ms) · Railway CPU (~4ms) |
+| Training data status | Synthetic baseline — real data pending hardware arrival |
 
-## Signal Processing
+---
 
-1. Bandpass filter: 20-450 Hz (4th-order Butterworth)
-2. Notch filter: 60 Hz (Q=30)
-3. Full-wave rectification
-4. Sliding window: 200ms / 50% overlap
+## Model Architectures
+
+### LSTM (default, on-device)
+
+```
+Input (1, 40, 8)
+  └─► Linear projection → 128-dim
+  └─► LSTM (2 layers · hidden=128 · dropout=0.3)
+  └─► Last timestep → Linear → 26 logits
+Parameters: ~246K
+ONNX size:  8.2 KB
+```
+
+Chosen for on-device deployment: ONNX export is clean, CoreML conversion is straightforward, and inference on Apple Neural Engine is < 2ms.
+
+### CNN-LSTM
+
+```
+Input (1, 40, 8) → permute to (1, 8, 40)
+  └─► Conv1D (32 filters, k=5) → ReLU → MaxPool
+  └─► Conv1D (64 filters, k=3) → ReLU → MaxPool
+  └─► LSTM (1 layer · hidden=128)
+  └─► Linear → 26 logits
+Parameters: ~185K
+```
+
+Better spatial feature extraction than plain LSTM for short windows.
+
+### Conformer (server, best accuracy)
+
+```
+Input (1, 40, 8) → Linear → d_model=256
+  └─► [× 6 Conformer blocks]:
+        Macaron FF (0.5×) → Multi-Head Attention (8 heads)
+        → GLU depthwise Conv1D → Macaron FF (0.5×) → LayerNorm
+  └─► Global average pool → Linear → 26 logits
+Parameters: ~1.5M
+```
+
+Conforms to the architecture from "Conformer: Convolution-augmented Transformer for Speech Recognition" (Gulati et al., 2020) adapted for sEMG. Best accuracy but too large for on-device inference.
+
+### Cross-Modal Embedding (CLIP-style)
+
+```
+EMGEncoder:    80-dim features → 3-layer Transformer → 128-dim embedding
+VisionEncoder: 63-dim landmarks → 2-layer MLP → 128-dim embedding
+Loss:          Symmetric InfoNCE (learnable log_temp)
+```
+
+Used for transfer learning from WLASL visual data before real EMG data is collected. The trained `EMGEncoder` initializes the LSTM/Conformer backbone.
+
+---
+
+## Signal Processing Pipeline
+
+```
+Raw sEMG (8 channels · 200Hz)
+  │
+  ├─► Bandpass filter: 20–450 Hz  (4th-order Butterworth)
+  ├─► Notch filter:   60 Hz       (Q = 30)  — power line rejection
+  ├─► Full-wave rectification
+  │
+  └─► Sliding window: 40 samples (200ms) · 50% overlap (20-sample hop)
+        └─► [ONNX path] Direct window → model input (1, 40, 8)
+        └─► [REST /predict] Optional 80-dim feature extraction:
+              RMS, MAV, WL, ZC, SSC, VAR, AR(4), IEMG, kurtosis, MNF
+              × 8 channels = 80-dim vector
+```
+
+**Important:** The ONNX model expects raw windowed data `(1, 40, 8)`, not the 80-dim feature vector. Feature extraction is available for SVM and analysis but is NOT fed to LSTM/Conformer/CNN-LSTM.
+
+---
 
 ## Performance
 
-| Training Data | Val Accuracy | Notes |
-|---------------|-------------|-------|
-| Synthetic (2,600 samples) | ~70-85% | Baseline, no real data |
-| Synthetic + augmentation | ~80-90% | Medium augmentation pipeline |
-| Real EMG (when collected) | TBD | Target: >95% |
-| WLASL cross-modal pre-train | TBD | With vision teacher bootstrap |
+### Current baseline (synthetic data)
 
-## Inference Latency (CPU)
+| Model | Val Accuracy | Val Loss | Params | ONNX size |
+|-------|-------------|----------|--------|-----------|
+| LSTM | ~70–85% | — | 246K | 8.2 KB |
+| CNN-LSTM | ~75–87% | — | 185K | ~7 KB |
+| SVM (80-dim feats) | ~60–70% | — | — | — |
+| Conformer | ~80–90% | — | 1.5M | ~6 MB |
 
-| Runtime | Mean | P95 |
-|---------|------|-----|
-| PyTorch CPU | ~8ms | ~12ms |
-| ONNX Runtime CPU | ~4ms | ~6ms |
-| CoreML (Apple Neural Engine) | ~2ms | ~3ms |
+Accuracy range reflects variance across synthetic data seeds. These numbers will increase dramatically with real sEMG recordings.
+
+### Target performance (real data)
+
+| Scenario | Target accuracy | Notes |
+|----------|----------------|-------|
+| Single-session, single-user | > 95% | After calibration |
+| Cross-session, single-user | > 90% | With per-session normalization |
+| Cross-user (generalized) | > 80% | After multi-user training |
+| With cross-modal pre-training | +5–10% | Vision teacher bootstrap |
+
+### Inference latency
+
+| Runtime | Device | Mean | P95 |
+|---------|--------|------|-----|
+| PyTorch CPU | MacBook M-series | ~8ms | ~12ms |
+| ONNX Runtime CPU | Railway (2 threads) | ~4ms | ~6ms |
+| CoreML Neural Engine | iPhone 16 | ~2ms | ~3ms |
+| CoreML CPU fallback | iPhone (older) | ~8ms | ~12ms |
+
+---
+
+## iOS Deployment (CoreML)
+
+```bash
+# Export ONNX → CoreML .mlpackage
+python scripts/export_coreml.py \
+    --onnx models/asl_emg_classifier.onnx \
+    --output models/asl_emg_classifier.mlpackage \
+    --target ios16
+
+# Output: models/asl_emg_classifier.mlpackage
+# Compatible: iOS 16+ · macOS 13+ · Apple Neural Engine (A15+)
+```
+
+The `.mlpackage` is integrated into the React Native app via `@onnxruntime/react-native`. On iOS 16+ devices, CoreML automatically routes inference to the Neural Engine when available.
+
+---
+
+## Training Data
+
+### Current: synthetic (pre-hardware)
+
+Generated by `scripts/train_lstm_baseline.py`:
+- 2,600 samples across 26 classes (100 per class)
+- Gaussian noise baseline with per-class spectral signatures
+- Augmented with: time-warp, channel dropout, amplitude scaling, Gaussian noise
+
+This data will be replaced entirely with real sEMG recordings once the MAIA Neural Band arrives.
+
+### Planned: real sEMG + WLASL bootstrap
+
+| Data source | Samples | Classes | Notes |
+|-------------|---------|---------|-------|
+| Synthetic (current) | 2,600 | 26 | Placeholder only |
+| Real sEMG (Phase 1) | ~5,200 | 26 | 1 user · 2 sessions |
+| Real sEMG (Phase 2) | ~26,000 | 26 | 5+ users · multi-session |
+| WLASL cross-modal | 21,083 videos | 2,000 words | Vision teacher pre-training |
+
+---
 
 ## Limitations
 
-- Synthetic training data -- accuracy will improve dramatically once real sEMG recordings are collected
-- Trained on A-Z only -- does not cover ASL words or phrases
-- Electrode placement sensitivity -- requires consistent wrist placement
-- Not validated on users with different muscle mass, hand sizes, or arm lengths
+- **Synthetic training data** — all metrics above are on synthetic data; real sEMG performance is unknown until hardware arrives. Expect accuracy to both increase (more signal diversity) and initially decrease (distribution shift) before improving with real data.
+- **Static signs only** — A–Z static ASL letters only. Dynamic signs (words, phrases, fingerspelling sequences) are not supported in v0.1.
+- **Electrode placement sensitivity** — small band shifts produce measurable accuracy drops. Per-session calibration mitigates but does not eliminate this.
+- **Single-arm, right-hand dominant** — trained and validated on right-hand wrist placement only. Left-hand adaptation needs mirrored placement and retraining.
+- **Not validated across users** — single-user (Caleb Newton) until multi-user data collection begins. Cross-user accuracy is unknown.
+- **Not a medical device** — not validated for clinical accessibility applications.
+
+---
 
 ## Changelog
 
-| Version | Date | Notes |
-|---------|------|-------|
-| 0.1.0 | 2026-02 | Initial baseline, synthetic data |
+| Version | Date | Architecture | Training Data | Notes |
+|---------|------|-------------|--------------|-------|
+| 0.1.0 | 2026-02 | LSTM (246K) | Synthetic (2,600 samples) | Initial baseline; ONNX export verified |
+
+---
 
 ## Citation
 
 ```bibtex
 @software{maia_emg_asl,
-  author = {Newton, Caleb and MAIA Biotech},
-  title = {MAIA EMG-ASL: Real-time Sign Language Recognition from sEMG},
-  year = {2026},
-  url = {https://github.com/calebnewtonusc/maia-emg-asl}
+  author    = {Newton, Caleb and MAIA Biotech},
+  title     = {MAIA EMG-ASL: Real-time Sign Language Recognition from Surface EMG},
+  year      = {2026},
+  version   = {0.1.0},
+  url       = {https://github.com/calebnewtonusc/maia-emg-asl}
 }
 ```
+
+### Related work
+
+- Gulati et al. (2020). *Conformer: Convolution-augmented Transformer for Speech Recognition.* — Conformer architecture basis.
+- Radford et al. (2021). *Learning Transferable Visual Models From Natural Language Supervision.* — CLIP-style cross-modal training.
+- Li et al. (2020). *WLASL: A Large-scale Dataset for Word-Level American Sign Language.* — Visual pre-training dataset.
