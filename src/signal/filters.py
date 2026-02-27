@@ -9,7 +9,7 @@ def bandpass_filter(
     signal: np.ndarray,
     lowcut: float = 20.0,
     highcut: float = 450.0,
-    fs: float = 200.0,
+    fs: float = 2000.0,
     order: int = 4,
 ) -> np.ndarray:
     """Butterworth bandpass filter. signal shape: (samples, channels)."""
@@ -23,7 +23,7 @@ def bandpass_filter(
 def notch_filter(
     signal: np.ndarray,
     freq: float = 60.0,
-    fs: float = 200.0,
+    fs: float = 2000.0,
     quality: float = 30.0,
 ) -> np.ndarray:
     """IIR notch filter to remove power-line interference."""
@@ -37,7 +37,7 @@ def full_wave_rectify(signal: np.ndarray) -> np.ndarray:
     return np.abs(signal)
 
 
-def preprocess(signal: np.ndarray, fs: float = 200.0) -> np.ndarray:
+def preprocess(signal: np.ndarray, fs: float = 2000.0) -> np.ndarray:
     """Full preprocessing pipeline: bandpass → notch → rectify."""
     sig = bandpass_filter(signal, fs=fs)
     sig = notch_filter(sig, fs=fs)

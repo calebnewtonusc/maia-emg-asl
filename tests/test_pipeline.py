@@ -38,12 +38,12 @@ class TestConstants:
 # =========================================================================
 class TestFilters:
     def test_bandpass_shape(self):
-        sig = np.random.randn(200, N_CHANNELS).astype(np.float32)
+        sig = np.random.randn(2000, N_CHANNELS).astype(np.float32)
         out = bandpass_filter(sig, fs=SAMPLE_RATE)
         assert out.shape == sig.shape
 
     def test_notch_shape(self):
-        sig = np.random.randn(200, N_CHANNELS).astype(np.float32)
+        sig = np.random.randn(2000, N_CHANNELS).astype(np.float32)
         out = notch_filter(sig, fs=SAMPLE_RATE)
         assert out.shape == sig.shape
 
@@ -53,7 +53,7 @@ class TestFilters:
         assert (out >= 0).all()
 
     def test_preprocess_pipeline(self):
-        sig = np.random.randn(400, N_CHANNELS).astype(np.float32)
+        sig = np.random.randn(4000, N_CHANNELS).astype(np.float32)
         out = preprocess(sig, fs=SAMPLE_RATE)
         assert out.shape == sig.shape
         assert (out >= 0).all()  # rectified
@@ -69,8 +69,8 @@ class TestFeatureExtraction:
         assert feat.shape == (FEATURE_DIM,)
 
     def test_window_signal(self):
-        sig = np.random.randn(200, N_CHANNELS).astype(np.float32)
-        feats = window_signal(sig, window_samples=WINDOW_SAMPLES, hop_samples=20)
+        sig = np.random.randn(2000, N_CHANNELS).astype(np.float32)
+        feats = window_signal(sig, window_samples=WINDOW_SAMPLES, hop_samples=200)
         assert feats.ndim == 2
         assert feats.shape[1] == FEATURE_DIM
 
@@ -87,8 +87,8 @@ class TestDataLoader:
 
     def test_create_windows(self):
         rng = np.random.default_rng(0)
-        emg = rng.random((300, N_CHANNELS)).astype(np.float32)
-        labels = rng.integers(0, N_CLASSES, 300).astype(np.int32)
+        emg = rng.random((2000, N_CHANNELS)).astype(np.float32)
+        labels = rng.integers(0, N_CLASSES, 2000).astype(np.int32)
         X, y = create_windows(emg, labels)
         assert X.ndim == 3
         assert X.shape[1:] == (WINDOW_SAMPLES, N_CHANNELS)

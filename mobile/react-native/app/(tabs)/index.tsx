@@ -8,8 +8,8 @@ import { getServerConfig } from '../../src/config/serverConfig';
 
 const ASL_CLASSES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const WS_RECONNECT_MS = 3000;
-const N_CHANNELS = 8;
-const WINDOW_SAMPLES = 40;
+const N_CHANNELS = 16;
+const WINDOW_SAMPLES = 400;
 
 interface Prediction {
   class: string | null;

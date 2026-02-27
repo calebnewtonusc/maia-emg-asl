@@ -67,7 +67,7 @@ def _kurt(window: np.ndarray) -> np.ndarray:
     return kurtosis(window, axis=0)
 
 
-def _mnf(window: np.ndarray, fs: float = 200.0) -> np.ndarray:
+def _mnf(window: np.ndarray, fs: float = 2000.0) -> np.ndarray:
     """Mean frequency per channel."""
     freqs = np.fft.rfftfreq(window.shape[0], d=1.0 / fs)
     psd = np.abs(np.fft.rfft(window, axis=0)) ** 2
@@ -76,10 +76,10 @@ def _mnf(window: np.ndarray, fs: float = 200.0) -> np.ndarray:
     return mean_freq
 
 
-def extract_features(window: np.ndarray, fs: float = 200.0) -> np.ndarray:
+def extract_features(window: np.ndarray, fs: float = 2000.0) -> np.ndarray:
     """
     Extract 10 features per channel from a (samples, channels) window.
-    Returns 1-D vector of length N_CHANNELS * 10 = 80.
+    Returns 1-D vector of length N_CHANNELS * 10 = 160.
     """
     features = np.stack([
         _rms(window),
@@ -98,16 +98,16 @@ def extract_features(window: np.ndarray, fs: float = 200.0) -> np.ndarray:
 
 def window_signal(
     signal: np.ndarray,
-    window_samples: int = 40,
-    hop_samples: int = 20,
+    window_samples: int = 400,
+    hop_samples: int = 200,
 ) -> np.ndarray:
     """
     Slide a window over signal and extract feature vectors.
 
     Args:
         signal: (total_samples, N_CHANNELS)
-        window_samples: samples per window (default 40 = 200ms @ 200Hz)
-        hop_samples: hop size (default 20 = 50% overlap)
+        window_samples: samples per window (default 400 = 200ms @ 2kHz)
+        hop_samples: hop size (default 200 = 50% overlap)
 
     Returns:
         features: (n_windows, feature_dim)
