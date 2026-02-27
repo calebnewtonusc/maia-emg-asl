@@ -1,0 +1,20 @@
+-r requirements.txt
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+httpx>=0.25.0  # for TestClient
+
+# Code quality
+ruff>=0.1.0
+black>=23.0.0
+mypy>=1.6.0
+
+# Notebooks
+jupyter>=1.0.0
+ipykernel>=6.25.0
+
+# Vision teacher (optional)
+opencv-python>=4.8.0
+mediapipe>=0.10.0

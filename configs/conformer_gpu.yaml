@@ -1,0 +1,28 @@
+# Conformer GPU training configuration (IYA Nvidia Lab)
+model: conformer
+d_model: 256
+n_layers: 6
+n_heads: 8
+kernel_size: 31
+dropout: 0.1
+
+training:
+  epochs: 300
+  batch_size: 1024
+  learning_rate: 0.0005
+  scheduler: cosine_warmup
+  warmup_epochs: 10
+  weight_decay: 0.0001
+  early_stop_patience: 20
+  grad_clip: 1.0
+  gradient_accumulation: 4  # effective batch = 4096
+  mixed_precision: true
+
+augmentation:
+  enabled: true
+  strength: strong
+
+data:
+  window_samples: 40
+  hop_samples: 20
+  n_classes: 26

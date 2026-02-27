@@ -1,0 +1,6 @@
+# Place your trained ONNX model here:
+#   asl_emg_classifier.onnx
+#
+# To export from training:
+#   python scripts/train_lstm_baseline.py --export-onnx
+#   cp models/asl_emg_classifier.onnx mobile/react-native/assets/model/

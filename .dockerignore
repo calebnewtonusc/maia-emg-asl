@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+data/
+notebooks/
+hardware/
+mobile/
+scripts/slurm/
+*.pt
+*.onnx
+.env*
+tests/
+docs/

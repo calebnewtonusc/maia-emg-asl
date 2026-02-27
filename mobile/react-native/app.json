@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "MAIA ASL",
+    "slug": "maia-emg-asl",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#121212"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.maiatech.emgasl",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "MAIA needs Bluetooth to connect to the neural band",
+        "NSBluetoothPeripheralUsageDescription": "MAIA needs Bluetooth to connect to the neural band"
+      }
+    },
+    "android": {
+      "package": "com.maiatech.emgasl"
+    },
+    "scheme": "maia-emg-asl",
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

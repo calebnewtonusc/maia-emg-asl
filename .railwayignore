@@ -1,0 +1,38 @@
+# Large data files - not needed on Railway
+data/
+*.npz
+*.csv
+
+# Training notebooks and scripts
+notebooks/
+scripts/slurm/
+scripts/train_*.py
+scripts/optuna_*.py
+scripts/download_*.py
+scripts/extract_*.py
+scripts/record_*.py
+scripts/augmentation_demo.py
+scripts/benchmark_models.py
+scripts/run_full_pipeline.sh
+
+# Hardware and mobile
+hardware/
+mobile/
+
+# Model weights - large .pt files excluded; .onnx bundled directly for dev
+# (switch to R2_MODEL_URL once doing real GPU training)
+*.pt
+*.mlpackage
+*.mlmodel
+
+# Dev dependencies and tools
+requirements-dev.txt
+.venv/
+venv/
+tests/
+docs/
+configs/
+
+# Git
+.git/
+.gitignore

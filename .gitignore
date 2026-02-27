@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Data (large files)
+data/**/*.npz
+data/**/*.csv
+data/**/*.mp4
+
+# Model weights
+models/*.pt
+models/*.onnx
+models/*.mlpackage
+models/*.mlmodel
+
+# Environment
+.env
+.env.local
+*.env.local
+
+# Logs
+logs/
+*.log
+*.out
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# wandb
+wandb/
+
+# Optuna
+*.db
+
+# R2 credentials (NEVER commit)
+r2_credentials.sh

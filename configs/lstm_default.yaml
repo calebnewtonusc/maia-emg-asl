@@ -1,0 +1,24 @@
+# LSTM default training configuration
+model: lstm
+hidden_size: 128
+num_layers: 2
+dropout: 0.3
+bidirectional: false
+
+training:
+  epochs: 200
+  batch_size: 256
+  learning_rate: 0.001
+  scheduler: cosine
+  early_stop_patience: 15
+  grad_clip: 1.0
+
+augmentation:
+  enabled: true
+  strength: medium
+
+data:
+  window_samples: 40
+  hop_samples: 20
+  feature_dim: 80
+  n_classes: 26
